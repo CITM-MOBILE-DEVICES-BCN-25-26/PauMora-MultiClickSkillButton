@@ -585,7 +585,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd7a3aac1389cfa48be08ecf7a2b5519, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MultiSkillButton
-  timeToShortClick: 0.2
+  timeToShortClick: 200
   millisecondsDoubleClickTime: 100
 --- !u!114 &1196591301
 MonoBehaviour:
