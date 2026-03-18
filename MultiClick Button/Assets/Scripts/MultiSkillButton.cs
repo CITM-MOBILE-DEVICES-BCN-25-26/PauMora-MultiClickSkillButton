@@ -48,12 +48,15 @@ public class MultiSkillButton : MonoBehaviour, IPointerDownHandler, IPointerUpHa
 		{
             cancellationTokenSource.Cancel();
             cancellationTokenSource.Dispose();
+        }
 
+		if (doubleClickCancellationTokenSource != null)
+		{
             doubleClickCancellationTokenSource.Cancel();
             doubleClickCancellationTokenSource.Dispose();
         }
 
-        cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource = new CancellationTokenSource();
         doubleClickCancellationTokenSource = new CancellationTokenSource();
 
 		buttonState = await ButtonLogic(cancellationTokenSource.Token, doubleClickCancellationTokenSource.Token);
@@ -80,17 +83,16 @@ public class MultiSkillButton : MonoBehaviour, IPointerDownHandler, IPointerUpHa
 
 	async UniTask<ButtonState> ButtonLogic(CancellationToken taskCancellationToken, CancellationToken doubleCancellationToken)
 	{
-		var startTime = DateTime.Now;
-		TimeSpan currentDuration = TimeSpan.Zero;
+		float holdTime = 0f;
 
 		while (!taskCancellationToken.IsCancellationRequested)
 		{
-			currentDuration = DateTime.Now - startTime;
+			holdTime += Time.unscaledDeltaTime;
 
 			await UniTask.Yield();
 		}
 
-		if (currentDuration.TotalMilliseconds >  timeToShortClick)
+		if (TimeSpan.FromSeconds(holdTime) > TimeSpan.FromMilliseconds(timeToShortClick))
 		{
 			return ButtonState.LongClick;
 		}
