@@ -8,11 +8,11 @@ Thresholds:
 
 Button progression:
 
-- First it checks if the time is bigger than the short click threshold (200 ms)
-- If its shorter than the short click treshhold then we know its a short or a double click
-- Then it waits at most 100 ms to see if there is a double click
-- If there is a double click it stops the delay and instantly returns double click
-- If there is no double click the delay runs out and a short click is triggered.
+- The button starts as idle.
+- When we click the button goes to detecting long press and waits a delay of 200 ms
+- If its not canceled then we fire the long click
+- If it its cancelled by releasing the button the button enters waiting for double click state which checks if it will be a short click or a double click
+- If the button is clicked while in the time of the double click we enter a check to see if the double click will be activated or if its cancelled by triggering a long click
 
 There are two scripts: 
 - MultiSkillButton: Handles the logic (the important one)

@@ -586,7 +586,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MultiSkillButton
   timeToShortClick: 200
-  millisecondsDoubleClickTime: 100
+  timeToDoubleClick: 100
+  buttonState: 0
 --- !u!114 &1196591301
 MonoBehaviour:
   m_ObjectHideFlags: 0

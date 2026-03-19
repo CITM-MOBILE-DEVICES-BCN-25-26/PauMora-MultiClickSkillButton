@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,110 +10,112 @@ public class MultiSkillButton : MonoBehaviour, IPointerDownHandler, IPointerUpHa
 {
 	enum ButtonState
 	{
-		ShortClick,
-		DoubleClick,
-		LongClick
+		Idle,
+		DetectingLongPress,
+		WaitingForDoubleClick,
+		WaitingForRelease
 	}
 
 	CancellationTokenSource cancellationTokenSource;
-	CancellationTokenSource doubleClickCancellationTokenSource;
 	
 	[SerializeField] int timeToShortClick = 200;
-	[SerializeField] int millisecondsDoubleClickTime = 100;
+	[SerializeField] int timeToDoubleClick = 100;
 
-	ButtonState buttonState;
+	[SerializeField] ButtonState buttonState = ButtonState.Idle;
 
-	int buttonTimesPressed = 0;
+	float timeButtonPressed;
 
-	bool isBusy = false;
 	private void OnDisable()
 	{
 		if (cancellationTokenSource != null) cancellationTokenSource.Cancel();
-		if (doubleClickCancellationTokenSource != null) doubleClickCancellationTokenSource.Cancel();
-    }
+	}
 
-	public async void OnPointerDown(PointerEventData eventData)
+	private void ResetTasks()
 	{
-		buttonTimesPressed++;
-		
-		if (buttonTimesPressed == 2)
-		{
-            doubleClickCancellationTokenSource.Cancel();
-        }
-
-		if (isBusy) return;
-
-		isBusy = true;
-	 
 		if (cancellationTokenSource != null)
 		{
-            cancellationTokenSource.Cancel();
-            cancellationTokenSource.Dispose();
+			cancellationTokenSource.Cancel();
+			cancellationTokenSource.Dispose();
+			cancellationTokenSource = null;
         }
 
-		if (doubleClickCancellationTokenSource != null)
-		{
-            doubleClickCancellationTokenSource.Cancel();
-            doubleClickCancellationTokenSource.Dispose();
-        }
+        cancellationTokenSource = new CancellationTokenSource();
+    }
 
-            cancellationTokenSource = new CancellationTokenSource();
-        doubleClickCancellationTokenSource = new CancellationTokenSource();
-
-		buttonState = await ButtonLogic(cancellationTokenSource.Token, doubleClickCancellationTokenSource.Token);
-
+    public void OnPointerDown(PointerEventData eventData)
+	{
 		switch (buttonState)
 		{
-			case ButtonState.ShortClick:
-				Debug.Log("Short Click");
+			case ButtonState.Idle:
+				ResetTasks();
+				
+				buttonState = ButtonState.DetectingLongPress;
+				
+				LongClickDetection(cancellationTokenSource.Token).Forget();
+
 				break;
-			case ButtonState.DoubleClick:
-				Debug.Log("Double Click");
-				break;
-			case ButtonState.LongClick:
-				Debug.Log("Long Click");
-				break;
+			case ButtonState.WaitingForDoubleClick:
+
+                ResetTasks();
+
+				DoubleClickDetection(cancellationTokenSource.Token).Forget();
+
+				buttonState = ButtonState.WaitingForRelease;
+
+                break;
 		}
-		
-		ButtonReturnIdle();
 	}
 	public void OnPointerUp(PointerEventData eventData)
 	{
-		if (cancellationTokenSource != null) cancellationTokenSource.Cancel();
+		switch (buttonState)
+		{
+			case ButtonState.DetectingLongPress:
+
+                ResetTasks();
+
+				buttonState = ButtonState.WaitingForDoubleClick;
+
+                DoubleClickOrNormal(cancellationTokenSource.Token).Forget();
+
+				break;
+
+			case ButtonState.WaitingForRelease:
+				ResetTasks();
+
+				buttonState = ButtonState.Idle;
+				break;
+		}
+
 	}
 
-	async UniTask<ButtonState> ButtonLogic(CancellationToken taskCancellationToken, CancellationToken doubleCancellationToken)
+	async UniTask LongClickDetection(CancellationToken taskCancellationToken)
 	{
-		float holdTime = 0f;
+		await UniTask.Delay(TimeSpan.FromMilliseconds(timeToShortClick), cancellationToken: taskCancellationToken);
 
-		while (!taskCancellationToken.IsCancellationRequested)
-		{
-			holdTime += Time.unscaledDeltaTime;
-
-			await UniTask.Yield();
-		}
-
-		if (TimeSpan.FromSeconds(holdTime) > TimeSpan.FromMilliseconds(timeToShortClick))
-		{
-			return ButtonState.LongClick;
-		}
-		else 
-		{
-			await UniTask.Delay(TimeSpan.FromMilliseconds(millisecondsDoubleClickTime), cancellationToken: doubleCancellationToken).SuppressCancellationThrow();
-
-			if (buttonTimesPressed >= 2)
-			{
-				return ButtonState.DoubleClick;
-			}
-			else
-			{
-				return ButtonState.ShortClick;
-			}
-		}
+        Debug.Log("Long Click Detected");
+		buttonState = ButtonState.WaitingForRelease;
 	}
-	private void ButtonReturnIdle()
+
+	async UniTask DoubleClickOrNormal(CancellationToken taskCancellationToken)
 	{
-		buttonTimesPressed = 0;
-		isBusy = false;
+        await UniTask.Delay(TimeSpan.FromMilliseconds(timeToDoubleClick), cancellationToken: taskCancellationToken);
+
+        Debug.Log("Short Click Detected");
+		buttonState = ButtonState.Idle;
 	}
+	
+	async UniTask DoubleClickDetection(CancellationToken taskCancellationToken)
+	{
+		await UniTask.Delay(TimeSpan.FromMilliseconds(timeToShortClick));
+
+		if (taskCancellationToken.IsCancellationRequested)
+		{
+            Debug.Log("Double Click Detected");
+        } else
+		{
+			Debug.Log("Long Click Detected");
+        }
+
+		buttonState = ButtonState.Idle;
+    }
 }
